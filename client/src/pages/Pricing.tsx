@@ -1,18 +1,21 @@
 /**
  * AGENT PROVENANCE — Pricing Page
  * 3-tier PLG pricing: Free, Pro, Enterprise
+ * Pro CTA triggers Stripe Checkout (createCheckoutSession tRPC mutation).
  * Design: Dark, teal accent, editorial
  */
 import { useState } from "react";
 import { CheckCircle2, ArrowRight, Zap, Shield, Database, X, Loader2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { getLoginUrl } from "@/const";
+
+// ── Enterprise inquiry modal ───────────────────────────────────────────────
 
 function EnterpriseModal({ onClose }: { onClose: () => void }) {
   const [form, setForm] = useState({ name: "", email: "", company: "", useCase: "", message: "" });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-
   const notify = trpc.system.notifyOwner.useMutation();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -85,6 +88,8 @@ function EnterpriseModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+// ── Pricing tiers data ─────────────────────────────────────────────────────
+
 const tiers = [
   {
     name: "Free",
@@ -92,10 +97,10 @@ const tiers = [
     period: "forever",
     description: "For developers building and testing agent integrations.",
     icon: Zap,
-    color: "teal",
     cta: "Get started free",
     ctaHref: "https://github.com/anushathirkettle-ai/agent-provenance",
     ctaExternal: true,
+    badge: null,
     features: [
       "Up to 1,000 decision records/month",
       "3 data asset refs per decision",
@@ -119,8 +124,7 @@ const tiers = [
     period: "per month",
     description: "For teams shipping agents to production with compliance requirements.",
     icon: Shield,
-    color: "teal",
-    cta: "Start Pro trial",
+    cta: "Start Pro — $49/mo",
     ctaHref: null,
     ctaExternal: false,
     badge: "Most popular",
@@ -147,10 +151,10 @@ const tiers = [
     period: "per year",
     description: "For regulated industries and teams with legal/compliance sign-off requirements.",
     icon: Database,
-    color: "white",
     cta: "Talk to us",
     ctaHref: null,
     ctaExternal: false,
+    badge: null,
     features: [
       "Everything in Pro",
       "Custom compliance frameworks",
@@ -166,76 +170,64 @@ const tiers = [
   },
 ];
 
-function WaitlistModal({ onClose }: { onClose: () => void }) {
-  const [email, setEmail] = useState("");
-  const [company, setCompany] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const notify = trpc.system.notifyOwner.useMutation();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) return;
-    setSubmitting(true);
-    try {
-      await notify.mutateAsync({
-        title: "Pro Waitlist Signup — Agent Provenance",
-        content: `Email: ${email}\nCompany: ${company}`,
-      });
-      setSubmitted(true);
-    } catch {
-      toast.error("Something went wrong. Please email hello@agentprovenance.io");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-      <div className="bg-[oklch(0.11_0.015_240)] border border-white/12 rounded-xl w-full max-w-sm p-6 relative">
-        <button onClick={onClose} className="absolute top-4 right-4 text-white/40 hover:text-white/80 transition-colors"><X size={18} /></button>
-        {submitted ? (
-          <div className="text-center py-8">
-            <CheckCircle2 size={40} className="text-teal-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-white mb-2">You're on the list</h3>
-            <p className="text-white/55 text-sm">We'll email you when Pro launches. Expected: Q2 2026.</p>
-          </div>
-        ) : (
-          <>
-            <h3 className="text-lg font-semibold text-white mb-1">Join the Pro waitlist</h3>
-            <p className="text-white/50 text-sm mb-5">Pro is launching Q2 2026. Get early access and founding member pricing.</p>
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <div>
-                <label className="block text-xs text-white/50 mb-1">Work email *</label>
-                <input type="email" required placeholder="you@company.com" value={email} onChange={e => setEmail(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm text-white placeholder-white/25 focus:outline-none focus:border-teal-500/50 transition-colors" />
-              </div>
-              <div>
-                <label className="block text-xs text-white/50 mb-1">Company</label>
-                <input type="text" placeholder="Company name" value={company} onChange={e => setCompany(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm text-white placeholder-white/25 focus:outline-none focus:border-teal-500/50 transition-colors" />
-              </div>
-              <button type="submit" disabled={submitting}
-                className="w-full flex items-center justify-center gap-2 py-2.5 bg-teal-500 text-[oklch(0.08_0.015_240)] font-semibold rounded hover:bg-teal-400 transition-colors disabled:opacity-60 mt-1">
-                {submitting ? <Loader2 size={16} className="animate-spin" /> : null}
-                {submitting ? "Joining..." : "Join waitlist"}
-              </button>
-            </form>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
+// ── Main Pricing component ─────────────────────────────────────────────────
 
 export default function Pricing() {
-  const [showModal, setShowModal] = useState(false);
-  const [showWaitlist, setShowWaitlist] = useState(false);
+  const [showEnterpriseModal, setShowEnterpriseModal] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+
+  // Fetch current user to determine auth state
+  const { data: me } = trpc.auth.me.useQuery();
+
+  // Stripe checkout mutation
+  const createCheckout = trpc.stripe.createCheckoutSession.useMutation({
+    onSuccess: (data) => {
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        toast.error("Could not create checkout session. Please try again.");
+        setCheckoutLoading(false);
+      }
+    },
+    onError: (err) => {
+      toast.error(err.message || "Checkout failed. Please try again.");
+      setCheckoutLoading(false);
+    },
+  });
+
+  const handleProCheckout = async () => {
+    // If not logged in, redirect to sign-in first
+    if (!me) {
+      window.location.href = getLoginUrl();
+      return;
+    }
+
+    setCheckoutLoading(true);
+    const successUrl = `${window.location.origin}/pricing?checkout=success`;
+    const cancelUrl = `${window.location.origin}/pricing?checkout=cancelled`;
+    createCheckout.mutate({ successUrl, cancelUrl });
+  };
+
+  // Show success/cancel toast from URL params on return from Stripe
+  const params = new URLSearchParams(window.location.search);
+  const checkoutStatus = params.get("checkout");
 
   return (
     <div className="min-h-screen bg-[oklch(0.08_0.015_240)] text-white">
-      {showModal && <EnterpriseModal onClose={() => setShowModal(false)} />}
-      {showWaitlist && <WaitlistModal onClose={() => setShowWaitlist(false)} />}
+      {showEnterpriseModal && <EnterpriseModal onClose={() => setShowEnterpriseModal(false)} />}
+
+      {/* Checkout return banner */}
+      {checkoutStatus === "success" && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-teal-500 text-[oklch(0.08_0.015_240)] px-6 py-3 rounded-lg font-semibold text-sm shadow-lg flex items-center gap-2">
+          <CheckCircle2 size={16} />
+          Pro subscription activated — welcome aboard!
+        </div>
+      )}
+      {checkoutStatus === "cancelled" && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[oklch(0.14_0.015_240)] border border-white/15 text-white/80 px-6 py-3 rounded-lg text-sm shadow-lg">
+          Checkout cancelled — no charge was made.
+        </div>
+      )}
 
       {/* Header */}
       <div className="pt-28 pb-16 px-6 text-center">
@@ -269,7 +261,6 @@ export default function Pricing() {
                   </span>
                 </div>
               )}
-
               <div className="mb-5">
                 <div className={`w-9 h-9 rounded-lg flex items-center justify-center mb-3 ${tier.name === "Pro" ? "bg-teal-500/20" : "bg-white/8"}`}>
                   <tier.icon size={18} className={tier.name === "Enterprise" ? "text-white/70" : "text-teal-400"} />
@@ -297,36 +288,47 @@ export default function Pricing() {
                 ))}
               </div>
 
+              {/* CTA button */}
               {tier.ctaHref ? (
                 <a
                   href={tier.ctaHref}
                   target={tier.ctaExternal ? "_blank" : undefined}
                   rel={tier.ctaExternal ? "noopener noreferrer" : undefined}
-                  className={`flex items-center justify-center gap-2 py-2.5 rounded font-semibold text-sm transition-colors ${
-                    tier.name === "Pro"
-                      ? "bg-teal-500 text-[oklch(0.08_0.015_240)] hover:bg-teal-400"
-                      : "bg-white/8 text-white hover:bg-white/12 border border-white/10"
-                  }`}
+                  className="flex items-center justify-center gap-2 py-2.5 rounded font-semibold text-sm transition-colors bg-white/8 text-white hover:bg-white/12 border border-white/10"
                 >
                   {tier.cta} <ArrowRight size={14} />
                 </a>
+              ) : tier.name === "Pro" ? (
+                <button
+                  onClick={handleProCheckout}
+                  disabled={checkoutLoading}
+                  className="flex items-center justify-center gap-2 py-2.5 rounded font-semibold text-sm transition-colors bg-teal-500 text-[oklch(0.08_0.015_240)] hover:bg-teal-400 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {checkoutLoading ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      Redirecting…
+                    </>
+                  ) : (
+                    <>
+                      {tier.cta} <ArrowRight size={14} />
+                    </>
+                  )}
+                </button>
               ) : (
                 <button
-                  onClick={() => {
-                    if (tier.name === "Enterprise") {
-                      setShowModal(true);
-                    } else if (tier.name === "Pro") {
-                      setShowWaitlist(true);
-                    }
-                  }}
-                  className={`flex items-center justify-center gap-2 py-2.5 rounded font-semibold text-sm transition-colors ${
-                    tier.name === "Pro"
-                      ? "bg-teal-500 text-[oklch(0.08_0.015_240)] hover:bg-teal-400"
-                      : "bg-white/8 text-white hover:bg-white/12 border border-white/10"
-                  }`}
+                  onClick={() => setShowEnterpriseModal(true)}
+                  className="flex items-center justify-center gap-2 py-2.5 rounded font-semibold text-sm transition-colors bg-white/8 text-white hover:bg-white/12 border border-white/10"
                 >
                   {tier.cta} <ArrowRight size={14} />
                 </button>
+              )}
+
+              {/* Pro — login hint for unauthenticated users */}
+              {tier.name === "Pro" && !me && (
+                <p className="text-xs text-white/30 text-center mt-2">
+                  Sign in required — we'll redirect you first.
+                </p>
               )}
             </div>
           ))}
@@ -352,6 +354,10 @@ export default function Pricing() {
               {
                 q: "Can Agent Provenance be used for acquisition due diligence?",
                 a: "Yes — this is one of the primary use cases for the Enterprise tier. The compliance report output is designed to be readable by legal and technical teams during M&A due diligence on AI systems.",
+              },
+              {
+                q: "How does billing work?",
+                a: "Pro is billed monthly at $49/month via Stripe. You can cancel at any time from your account settings. There are no long-term contracts or cancellation fees.",
               },
             ].map((item) => (
               <div key={item.q} className="border-b border-white/8 pb-6">

@@ -7,6 +7,7 @@ import { registerOAuthRoutes } from "./oauth";
 import { registerGioRoutes } from "../gioRouter";
 import { registerScoreRoutes } from "../scoreRouter";
 import { registerDemoRoutes } from "../demoRouter";
+import { registerStripeWebhookRoute } from "../stripeRouter";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -33,9 +34,15 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
+
+  // Stripe webhook MUST be registered BEFORE express.json() so it can read
+  // the raw body for signature verification.
+  registerStripeWebhookRoute(app);
+
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   // Gio™ AI chat endpoint
@@ -44,6 +51,7 @@ async function startServer() {
   registerScoreRoutes(app);
   // Book a Demo form endpoint
   registerDemoRoutes(app);
+
   // tRPC API
   app.use(
     "/api/trpc",
@@ -52,6 +60,7 @@ async function startServer() {
       createContext,
     })
   );
+
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);

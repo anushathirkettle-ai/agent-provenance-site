@@ -6,6 +6,7 @@ import { useEffect, useRef } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
+import About from "./pages/About";
 import AuditTool from "./pages/AuditTool";
 import Pricing from "./pages/Pricing";
 import Developers from "./pages/Developers";
@@ -32,6 +33,7 @@ function Router() {
       <Nav />
       <Switch>
         <Route path="/" component={Home} />
+        <Route path="/about" component={About} />
         <Route path="/audit" component={AuditTool} />
         <Route path="/pricing" component={Pricing} />
         <Route path="/developers" component={Developers} />
