@@ -6,9 +6,14 @@ import { useEffect, useRef } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
-import AuditTool from "./pages/AuditTool";
 import Pricing from "./pages/Pricing";
 import Developers from "./pages/Developers";
+import AuditTool from "./pages/AuditTool";
+import Admin from "./pages/Admin";
+import DecisionLog from "./pages/DecisionLog";
+import ReportViewer from "./pages/ReportViewer";
+import PreciselyIntegration from "./pages/PreciselyIntegration";
+import ApiKeys from "./pages/ApiKeys";
 import Nav from "./components/Nav";
 import Footer from "./components/Footer";
 
@@ -35,6 +40,12 @@ function Router() {
         <Route path="/audit" component={AuditTool} />
         <Route path="/pricing" component={Pricing} />
         <Route path="/developers" component={Developers} />
+        <Route path="/admin" component={Admin} />
+        <Route path="/decisions" component={DecisionLog} />
+        <Route path="/decisions/api-keys" component={ApiKeys} />
+        <Route path="/report/decision/:id" component={ReportViewer} />
+        <Route path="/report/fleet" component={ReportViewer} />
+        <Route path="/integrations/precisely" component={PreciselyIntegration} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>

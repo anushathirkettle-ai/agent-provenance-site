@@ -7,6 +7,8 @@ import { registerOAuthRoutes } from "./oauth";
 import { registerGioRoutes } from "../gioRouter";
 import { registerScoreRoutes } from "../scoreRouter";
 import { registerDemoRoutes } from "../demoRouter";
+import { registerStripeWebhook } from "../stripeWebhook";
+import { registerV1Routes } from "../v1Router";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -33,6 +35,8 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
+  // Stripe webhook MUST use raw body BEFORE express.json()
+  app.use("/api/stripe/webhook", express.raw({ type: "application/json" }));
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
@@ -44,6 +48,11 @@ async function startServer() {
   registerScoreRoutes(app);
   // Book a Demo form endpoint
   registerDemoRoutes(app);
+  // Stripe webhook
+  registerStripeWebhook(app);
+
+  // REST API v1 — SDK-friendly, API-key auth
+  registerV1Routes(app);
   // tRPC API
   app.use(
     "/api/trpc",
