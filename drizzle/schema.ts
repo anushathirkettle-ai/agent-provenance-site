@@ -15,6 +15,14 @@ export const users = mysqlTable("users", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
+  /** Stripe customer ID — set when user initiates first checkout */
+  stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
+  /** Stripe subscription ID — set after checkout.session.completed webhook */
+  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }),
+  /** Subscription tier: free | pro */
+  subscriptionTier: mysqlEnum("subscriptionTier", ["free", "pro"]).default("free").notNull(),
+  /** When the current subscription period ends (from Stripe) */
+  subscriptionEndsAt: timestamp("subscriptionEndsAt"),
 });
 
 export type User = typeof users.$inferSelect;

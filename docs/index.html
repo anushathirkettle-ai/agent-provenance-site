@@ -1,0 +1,1388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agent Provenance — Compliance-ready audit trails for AI agents</title>
+  <meta name="description" content="Know why your AI agent decided — and whether the data behind it was trustworthy. Open-source SDK + compliance dashboard for EU AI Act readiness." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: oklch(0.10 0.015 240);
+      --bg-card: oklch(0.14 0.015 240);
+      --bg-deep: oklch(0.08 0.01 240);
+      --teal: oklch(0.72 0.18 185);
+      --teal-dim: oklch(0.72 0.18 185 / 0.15);
+      --teal-border: oklch(0.72 0.18 185 / 0.35);
+      --amber: oklch(0.78 0.18 85);
+      --red: oklch(0.68 0.20 25);
+      --purple: oklch(0.60 0.20 290);
+      --white: oklch(1 0 0);
+      --white-70: oklch(1 0 0 / 0.70);
+      --white-50: oklch(1 0 0 / 0.50);
+      --white-30: oklch(1 0 0 / 0.30);
+      --white-10: oklch(1 0 0 / 0.10);
+      --white-8: oklch(1 0 0 / 0.08);
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--white-70);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+    code, pre, .mono { font-family: 'JetBrains Mono', monospace; }
+    .serif { font-family: 'Playfair Display', serif; }
+
+    /* NAV */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: oklch(0.10 0.015 240 / 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--white-10);
+    }
+    .nav-inner {
+      max-width: 1280px; margin: 0 auto;
+      padding: 0 24px;
+      height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .nav-brand {
+      display: flex; align-items: center; gap: 10px;
+      text-decoration: none; color: var(--white);
+    }
+    .nav-logo {
+      width: 28px; height: 28px; border-radius: 4px;
+      background: var(--teal-dim); border: 1px solid var(--teal-border);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .nav-brand-text { font-family: 'JetBrains Mono', monospace; font-size: 14px; letter-spacing: -0.02em; }
+    .nav-links { display: flex; align-items: center; gap: 4px; }
+    .nav-link {
+      padding: 6px 14px; border-radius: 6px; text-decoration: none;
+      font-size: 14px; font-weight: 500; color: var(--white-70);
+      transition: color 0.15s, background 0.15s; cursor: pointer; border: none; background: none;
+    }
+    .nav-link:hover, .nav-link.active { color: var(--white); background: var(--white-8); }
+    .nav-cta {
+      padding: 8px 18px; border-radius: 6px; font-size: 14px; font-weight: 600;
+      background: var(--teal); color: oklch(0.08 0.015 240);
+      text-decoration: none; transition: opacity 0.15s; cursor: pointer; border: none;
+    }
+    .nav-cta:hover { opacity: 0.88; }
+    .nav-gh {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 13px; color: var(--white-70); text-decoration: none;
+      padding: 6px 10px; border-radius: 6px; transition: color 0.15s;
+    }
+    .nav-gh:hover { color: var(--white); }
+
+    /* PAGES */
+    .page { display: none; padding-top: 60px; min-height: 100vh; }
+    .page.active { display: block; }
+
+    /* CONTAINER */
+    .container { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
+    .container-narrow { max-width: 860px; margin: 0 auto; padding: 0 24px; }
+
+    /* HOME PAGE */
+    .hero {
+      padding: 80px 0 60px;
+      border-bottom: 1px solid var(--white-10);
+    }
+    .hero-inner {
+      max-width: 1280px; margin: 0 auto; padding: 0 24px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 14px; border-radius: 999px;
+      border: 1px solid var(--teal-border); background: var(--teal-dim);
+      font-size: 12px; font-weight: 500; color: var(--teal); margin-bottom: 24px;
+    }
+    .hero-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .hero-headline { font-size: clamp(36px, 5vw, 56px); font-weight: 700; color: var(--white); line-height: 1.1; margin-bottom: 20px; }
+    .hero-headline .accent { color: var(--teal); }
+    .hero-sub { font-size: 17px; color: var(--white-50); line-height: 1.65; margin-bottom: 32px; max-width: 480px; }
+    .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 40px; }
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 24px; border-radius: 8px; font-size: 15px; font-weight: 600;
+      background: var(--teal); color: oklch(0.08 0.015 240);
+      text-decoration: none; transition: opacity 0.15s; cursor: pointer; border: none;
+    }
+    .btn-primary:hover { opacity: 0.88; }
+    .btn-secondary {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 24px; border-radius: 8px; font-size: 15px; font-weight: 600;
+      background: var(--white-8); color: var(--white-70); border: 1px solid var(--white-10);
+      text-decoration: none; transition: background 0.15s, color 0.15s; cursor: pointer;
+    }
+    .btn-secondary:hover { background: var(--white-10); color: var(--white); }
+    .hero-trust { display: flex; gap: 24px; flex-wrap: wrap; }
+    .trust-item { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--white-50); }
+    .trust-icon { color: var(--teal); font-size: 14px; }
+
+    /* SCORE WIDGET */
+    .score-widget {
+      background: var(--bg-card); border: 1px solid var(--white-10);
+      border-radius: 16px; overflow: hidden;
+    }
+    .score-widget-header {
+      background: var(--bg-deep); padding: 12px 16px;
+      display: flex; align-items: center; gap: 8px;
+      border-bottom: 1px solid var(--white-10);
+    }
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot-red { background: #ff5f57; }
+    .dot-yellow { background: #febc2e; }
+    .dot-green { background: #28c840; }
+    .score-widget-title { margin-left: 4px; font-size: 12px; color: var(--white-30); font-family: 'JetBrains Mono', monospace; }
+    .score-widget-body { padding: 24px; }
+    .score-overall { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+    .score-ring-container { position: relative; width: 80px; height: 80px; flex-shrink: 0; }
+    .score-ring-svg { transform: rotate(-90deg); }
+    .score-ring-bg { fill: none; stroke: var(--white-8); stroke-width: 6; }
+    .score-ring-fill { fill: none; stroke-width: 6; stroke-linecap: round; transition: stroke-dashoffset 1.2s ease; }
+    .score-ring-text {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+    }
+    .score-number { font-size: 22px; font-weight: 700; color: var(--white); line-height: 1; }
+    .score-denom { font-size: 10px; color: var(--white-30); }
+    .score-label { font-size: 18px; font-weight: 600; color: var(--white); }
+    .score-status { font-size: 13px; color: var(--amber); margin-top: 2px; }
+    .score-bars { display: flex; flex-direction: column; gap: 12px; }
+    .score-bar-row { display: flex; flex-direction: column; gap: 4px; }
+    .score-bar-label { display: flex; justify-content: space-between; font-size: 12px; }
+    .score-bar-name { color: var(--white-50); }
+    .score-bar-val { color: var(--white-70); font-weight: 500; }
+    .score-bar-track { height: 4px; background: var(--white-8); border-radius: 999px; overflow: hidden; }
+    .score-bar-fill { height: 100%; border-radius: 999px; transition: width 1s ease; }
+
+    /* SECTIONS */
+    .section { padding: 80px 0; border-bottom: 1px solid var(--white-10); }
+    .section-label { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--teal); margin-bottom: 12px; }
+    .section-title { font-size: clamp(28px, 4vw, 40px); font-weight: 700; color: var(--white); line-height: 1.2; margin-bottom: 16px; }
+    .section-sub { font-size: 16px; color: var(--white-50); max-width: 560px; line-height: 1.65; }
+    .section-header { margin-bottom: 48px; }
+
+    /* HOW IT WORKS */
+    .steps-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px; }
+    .step-card {
+      background: var(--bg-card); border: 1px solid var(--white-10);
+      border-radius: 12px; padding: 28px 24px;
+    }
+    .step-num {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: var(--teal-dim); border: 1px solid var(--teal-border);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--teal);
+      margin-bottom: 16px;
+    }
+    .step-title { font-size: 15px; font-weight: 600; color: var(--white); margin-bottom: 8px; }
+    .step-desc { font-size: 13px; color: var(--white-50); line-height: 1.6; }
+
+    /* CODE BLOCK */
+    .code-block {
+      background: var(--bg-deep); border: 1px solid var(--white-10);
+      border-radius: 12px; overflow: hidden; margin: 32px 0;
+    }
+    .code-header {
+      background: oklch(0.12 0.012 240); padding: 10px 16px;
+      display: flex; align-items: center; gap: 8px;
+      border-bottom: 1px solid var(--white-10);
+    }
+    .code-lang { font-size: 11px; color: var(--white-30); font-family: 'JetBrains Mono', monospace; margin-left: auto; }
+    .code-body { padding: 20px 24px; overflow-x: auto; }
+    .code-body pre { font-size: 13px; line-height: 1.7; color: var(--white-70); white-space: pre; }
+    .code-kw { color: oklch(0.72 0.18 290); }
+    .code-str { color: oklch(0.78 0.18 85); }
+    .code-comment { color: var(--white-30); }
+    .code-fn { color: var(--teal); }
+    .code-num { color: oklch(0.68 0.20 25); }
+
+    /* DEADLINE BANNER */
+    .deadline-banner {
+      background: oklch(0.68 0.20 25 / 0.08); border: 1px solid oklch(0.68 0.20 25 / 0.25);
+      border-radius: 12px; padding: 20px 24px;
+      display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+      margin-bottom: 48px;
+    }
+    .deadline-icon { font-size: 20px; }
+    .deadline-text { flex: 1; }
+    .deadline-title { font-size: 14px; font-weight: 600; color: var(--white); margin-bottom: 2px; }
+    .deadline-sub { font-size: 13px; color: var(--white-50); }
+    .countdown { display: flex; gap: 12px; }
+    .countdown-unit { display: flex; flex-direction: column; align-items: center; }
+    .countdown-val { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 600; color: var(--teal); min-width: 44px; text-align: center; }
+    .countdown-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--white-30); margin-top: 2px; }
+
+    /* AUDIT PAGE */
+    .audit-form-card {
+      background: var(--bg-card); border: 1px solid var(--white-10);
+      border-radius: 16px; padding: 28px; margin-bottom: 20px;
+    }
+    .form-section-title {
+      font-size: 13px; font-weight: 600; color: var(--white-70);
+      display: flex; align-items: center; gap: 8px; margin-bottom: 16px;
+    }
+    .form-step-num {
+      width: 20px; height: 20px; border-radius: 50%;
+      background: var(--teal-dim); color: var(--teal);
+      font-family: 'JetBrains Mono', monospace; font-size: 11px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .chip-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip {
+      padding: 6px 14px; border-radius: 6px; font-size: 13px;
+      border: 1px solid var(--white-10); color: var(--white-50);
+      background: none; cursor: pointer; transition: all 0.15s;
+    }
+    .chip:hover { border-color: var(--white-30); color: var(--white-70); }
+    .chip.selected { background: var(--teal-dim); border-color: var(--teal-border); color: var(--teal); }
+    .form-textarea {
+      width: 100%; background: var(--bg); border: 1px solid var(--white-10);
+      border-radius: 8px; padding: 10px 14px; font-size: 13px;
+      color: var(--white-70); font-family: 'Inter', sans-serif;
+      resize: none; outline: none; transition: border-color 0.15s;
+    }
+    .form-textarea:focus { border-color: var(--teal-border); }
+    .form-textarea::placeholder { color: var(--white-30); }
+    .toggle-row {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 12px 0; border-bottom: 1px solid var(--white-8);
+    }
+    .toggle-row:last-child { border-bottom: none; }
+    .toggle {
+      width: 36px; height: 20px; border-radius: 10px;
+      background: var(--white-10); border: none; cursor: pointer;
+      position: relative; flex-shrink: 0; transition: background 0.2s; margin-top: 2px;
+    }
+    .toggle.on { background: var(--teal); }
+    .toggle::after {
+      content: ''; position: absolute; top: 2px; left: 2px;
+      width: 16px; height: 16px; border-radius: 50%; background: white;
+      transition: left 0.2s;
+    }
+    .toggle.on::after { left: 18px; }
+    .toggle-label { font-size: 13px; color: var(--white-70); line-height: 1.5; }
+    .submit-btn {
+      width: 100%; padding: 14px; border-radius: 10px;
+      background: var(--teal); color: oklch(0.08 0.015 240);
+      font-size: 15px; font-weight: 600; border: none; cursor: pointer;
+      transition: opacity 0.15s; margin-top: 8px;
+    }
+    .submit-btn:hover { opacity: 0.88; }
+    .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* RESULTS */
+    .results-card {
+      background: var(--bg-card); border: 1px solid var(--white-10);
+      border-radius: 16px; overflow: hidden;
+    }
+    .results-header { padding: 24px 28px; border-bottom: 1px solid var(--white-10); }
+    .risk-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .risk-high { background: oklch(0.68 0.20 25 / 0.15); color: var(--red); border: 1px solid oklch(0.68 0.20 25 / 0.3); }
+    .risk-limited { background: oklch(0.78 0.18 85 / 0.15); color: var(--amber); border: 1px solid oklch(0.78 0.18 85 / 0.3); }
+    .risk-minimal { background: var(--teal-dim); color: var(--teal); border: 1px solid var(--teal-border); }
+    .results-scores { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; padding: 24px 28px; border-bottom: 1px solid var(--white-10); }
+    .score-tile { background: var(--bg); border: 1px solid var(--white-8); border-radius: 10px; padding: 16px; }
+    .score-tile-label { font-size: 11px; color: var(--white-30); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+    .score-tile-val { font-size: 28px; font-weight: 700; line-height: 1; }
+    .score-tile-bar { height: 3px; background: var(--white-8); border-radius: 999px; margin-top: 10px; overflow: hidden; }
+    .score-tile-bar-fill { height: 100%; border-radius: 999px; }
+    .issues-section { padding: 24px 28px; border-bottom: 1px solid var(--white-10); }
+    .issues-title { font-size: 13px; font-weight: 600; color: var(--white); margin-bottom: 16px; }
+    .issue-item {
+      display: flex; gap: 10px; padding: 12px;
+      background: oklch(0.68 0.20 25 / 0.06); border: 1px solid oklch(0.68 0.20 25 / 0.15);
+      border-radius: 8px; margin-bottom: 8px; font-size: 13px; color: var(--white-70); line-height: 1.5;
+    }
+    .issue-icon { color: var(--red); flex-shrink: 0; margin-top: 1px; }
+    .sdk-section { padding: 24px 28px; }
+    .sdk-title { font-size: 13px; font-weight: 600; color: var(--white); margin-bottom: 4px; }
+    .sdk-sub { font-size: 12px; color: var(--white-50); margin-bottom: 16px; }
+    .sdk-code {
+      background: var(--bg-deep); border: 1px solid var(--white-10);
+      border-radius: 8px; padding: 16px; font-family: 'JetBrains Mono', monospace;
+      font-size: 12px; color: var(--white-70); line-height: 1.7; overflow-x: auto; white-space: pre;
+    }
+    .gate-overlay {
+      position: relative; margin-top: 0;
+    }
+    .gate-blur {
+      filter: blur(4px); pointer-events: none; user-select: none; opacity: 0.4;
+    }
+    .gate-card {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; text-align: center;
+      background: oklch(0.10 0.015 240 / 0.85); backdrop-filter: blur(2px);
+      border-radius: 0 0 16px 16px; padding: 32px;
+    }
+    .gate-icon { font-size: 32px; margin-bottom: 12px; }
+    .gate-title { font-size: 18px; font-weight: 700; color: var(--white); margin-bottom: 8px; }
+    .gate-sub { font-size: 14px; color: var(--white-50); margin-bottom: 24px; max-width: 360px; }
+
+    /* PRICING */
+    .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
+    .pricing-card {
+      background: var(--bg-card); border: 1px solid var(--white-10);
+      border-radius: 16px; padding: 32px; position: relative;
+    }
+    .pricing-card.featured { border-color: var(--teal-border); background: oklch(0.12 0.018 200); }
+    .pricing-badge {
+      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+      background: var(--teal); color: oklch(0.08 0.015 240);
+      font-size: 11px; font-weight: 700; padding: 4px 14px; border-radius: 999px;
+      white-space: nowrap;
+    }
+    .pricing-tier { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--white-50); margin-bottom: 8px; }
+    .pricing-price { font-size: 40px; font-weight: 700; color: var(--white); line-height: 1; margin-bottom: 4px; }
+    .pricing-price span { font-size: 18px; font-weight: 400; color: var(--white-50); }
+    .pricing-desc { font-size: 14px; color: var(--white-50); margin-bottom: 24px; line-height: 1.5; }
+    .pricing-features { list-style: none; margin-bottom: 28px; display: flex; flex-direction: column; gap: 10px; }
+    .pricing-feature { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: var(--white-70); }
+    .pricing-check { color: var(--teal); flex-shrink: 0; margin-top: 1px; }
+    .pricing-btn {
+      width: 100%; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s; border: none;
+    }
+    .pricing-btn-primary { background: var(--teal); color: oklch(0.08 0.015 240); }
+    .pricing-btn-primary:hover { opacity: 0.88; }
+    .pricing-btn-secondary { background: var(--white-8); color: var(--white-70); border: 1px solid var(--white-10); }
+    .pricing-btn-secondary:hover { background: var(--white-10); color: var(--white); }
+    .pricing-btn-outline { background: transparent; color: var(--white-70); border: 1px solid var(--white-10); }
+    .pricing-btn-outline:hover { border-color: var(--teal-border); color: var(--teal); }
+
+    /* DEVELOPERS */
+    .dev-tabs { display: flex; gap: 4px; margin-bottom: 32px; flex-wrap: wrap; }
+    .dev-tab {
+      padding: 8px 18px; border-radius: 8px; font-size: 14px; font-weight: 500;
+      background: none; border: 1px solid var(--white-10); color: var(--white-50);
+      cursor: pointer; transition: all 0.15s;
+    }
+    .dev-tab.active { background: var(--teal-dim); border-color: var(--teal-border); color: var(--teal); }
+    .dev-tab:hover:not(.active) { color: var(--white-70); border-color: var(--white-30); }
+    .dev-panel { display: none; }
+    .dev-panel.active { display: block; }
+    .install-cmd {
+      display: flex; align-items: center; gap: 12px;
+      background: var(--bg-deep); border: 1px solid var(--white-10);
+      border-radius: 8px; padding: 14px 18px; margin-bottom: 16px;
+    }
+    .install-cmd code { font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--teal); flex: 1; }
+    .copy-btn {
+      padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 500;
+      background: var(--white-8); color: var(--white-50); border: 1px solid var(--white-10);
+      cursor: pointer; transition: all 0.15s; white-space: nowrap;
+    }
+    .copy-btn:hover { background: var(--white-10); color: var(--white-70); }
+
+    /* ABOUT */
+    .about-hero { padding: 80px 0 60px; }
+    .about-photo-hero {
+      width: 100%; max-width: 480px; border-radius: 16px; overflow: hidden;
+      border: 1px solid var(--white-10); margin-bottom: 40px;
+    }
+    .about-photo-hero img { width: 100%; display: block; }
+    .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: start; }
+    .about-stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 32px; }
+    .about-stat {
+      background: var(--bg-card); border: 1px solid var(--white-10);
+      border-radius: 12px; padding: 20px;
+    }
+    .about-stat-num { font-size: 32px; font-weight: 700; color: var(--teal); line-height: 1; margin-bottom: 4px; }
+    .about-stat-label { font-size: 13px; color: var(--white-50); }
+    .about-quote {
+      background: var(--bg-card); border-left: 3px solid var(--teal);
+      border-radius: 0 12px 12px 0; padding: 20px 24px; margin: 32px 0;
+      font-size: 16px; color: var(--white-70); line-height: 1.65; font-style: italic;
+    }
+    .timeline { display: flex; flex-direction: column; gap: 0; }
+    .timeline-item { display: flex; gap: 20px; padding-bottom: 32px; position: relative; }
+    .timeline-item:last-child { padding-bottom: 0; }
+    .timeline-left { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+    .timeline-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--teal); border: 2px solid var(--bg); flex-shrink: 0; margin-top: 5px; }
+    .timeline-line { width: 1px; background: var(--white-10); flex: 1; margin-top: 4px; }
+    .timeline-item:last-child .timeline-line { display: none; }
+    .timeline-year { font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--teal); margin-bottom: 4px; }
+    .timeline-title { font-size: 14px; font-weight: 600; color: var(--white); margin-bottom: 4px; }
+    .timeline-desc { font-size: 13px; color: var(--white-50); line-height: 1.55; }
+
+    /* FOOTER */
+    footer {
+      background: var(--bg-deep); border-top: 1px solid var(--white-10);
+      padding: 60px 0 32px;
+    }
+    .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 32px; margin-bottom: 48px; }
+    .footer-brand-desc { font-size: 13px; color: var(--white-50); line-height: 1.65; margin-top: 12px; max-width: 240px; }
+    .footer-col-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--white-50); margin-bottom: 16px; }
+    .footer-links { display: flex; flex-direction: column; gap: 10px; }
+    .footer-link { font-size: 13px; color: var(--white-50); text-decoration: none; cursor: pointer; transition: color 0.15s; background: none; border: none; text-align: left; }
+    .footer-link:hover { color: var(--white-70); }
+    .footer-bottom { border-top: 1px solid var(--white-10); padding-top: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: gap; }
+    .footer-copy { font-size: 12px; color: var(--white-30); }
+    .footer-mit { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; background: var(--teal-dim); border: 1px solid var(--teal-border); font-size: 11px; color: var(--teal); font-family: 'JetBrains Mono', monospace; }
+
+    /* TOAST */
+    .toast {
+      position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+      background: var(--bg-card); border: 1px solid var(--white-10);
+      border-radius: 10px; padding: 12px 18px; font-size: 14px; color: var(--white-70);
+      box-shadow: 0 8px 32px oklch(0 0 0 / 0.4);
+      transform: translateY(80px); opacity: 0; transition: all 0.3s;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+
+    /* RESPONSIVE */
+    @media (max-width: 768px) {
+      .hero-inner { grid-template-columns: 1fr; gap: 40px; }
+      .about-grid { grid-template-columns: 1fr; }
+      .footer-grid { grid-template-columns: 1fr 1fr; }
+      .nav-links { display: none; }
+      .nav-gh { display: none; }
+    }
+    @media (max-width: 480px) {
+      .footer-grid { grid-template-columns: 1fr; }
+      .pricing-grid { grid-template-columns: 1fr; }
+    }
+
+    /* LOADING SPINNER */
+    .spinner {
+      width: 20px; height: 20px; border: 2px solid var(--white-10);
+      border-top-color: var(--teal); border-radius: 50%;
+      animation: spin 0.7s linear infinite; display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a class="nav-brand" onclick="showPage('home')">
+      <div class="nav-logo">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <circle cx="5" cy="5" r="3" fill="oklch(0.72 0.18 185)" />
+          <circle cx="11" cy="5" r="3" fill="oklch(0.72 0.18 185)" fill-opacity="0.5" />
+          <circle cx="5" cy="11" r="3" fill="oklch(0.72 0.18 185)" fill-opacity="0.5" />
+          <circle cx="11" cy="11" r="3" fill="oklch(0.72 0.18 185)" />
+        </svg>
+      </div>
+      <span class="nav-brand-text">agent-provenance</span>
+    </a>
+    <div class="nav-links">
+      <button class="nav-link" onclick="showPage('audit')">Audit</button>
+      <button class="nav-link" onclick="showPage('pricing')">Pricing</button>
+      <button class="nav-link" onclick="showPage('developers')">Developers</button>
+      <button class="nav-link" onclick="showPage('about')">About</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <a class="nav-gh" href="https://github.com/anushathirkettle-ai/agent-provenance" target="_blank">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        GitHub
+      </a>
+      <button class="nav-cta" onclick="showPage('audit')">Free audit →</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════ HOME PAGE ═══════════════════════════════════════════ -->
+<div id="page-home" class="page active">
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-inner">
+      <div>
+        <div class="hero-badge">
+          <span class="hero-badge-dot"></span>
+          EU AI Act enforcement begins August 2, 2026
+        </div>
+        <h1 class="hero-headline">
+          Your agents are<br>accountable.<br>
+          <span class="accent">Can you prove it?</span>
+        </h1>
+        <p class="hero-sub">
+          Agent Provenance is an open-source SDK that adds compliance-ready audit trails to any AI agent — in 2 lines of code. Know why your agent decided, and whether the data behind it was trustworthy.
+        </p>
+        <div class="hero-actions">
+          <button class="btn-primary" onclick="showPage('audit')">
+            Run free audit →
+          </button>
+          <button class="btn-secondary" onclick="showPage('developers')">
+            View SDK docs
+          </button>
+        </div>
+        <div class="hero-trust">
+          <span class="trust-item"><span class="trust-icon">✓</span> MIT open source</span>
+          <span class="trust-item"><span class="trust-icon">✓</span> No credit card required</span>
+          <span class="trust-item"><span class="trust-icon">✓</span> EU AI Act ready</span>
+        </div>
+      </div>
+      <!-- Score Widget -->
+      <div class="score-widget">
+        <div class="score-widget-header">
+          <div class="dot dot-red"></div>
+          <div class="dot dot-yellow"></div>
+          <div class="dot dot-green"></div>
+          <span class="score-widget-title">agent-readiness-score.json</span>
+          <span style="margin-left:auto;font-size:11px;color:var(--white-30);font-family:'JetBrains Mono',monospace;">demo</span>
+        </div>
+        <div class="score-widget-body">
+          <div class="score-overall">
+            <div class="score-ring-container">
+              <svg class="score-ring-svg" width="80" height="80" viewBox="0 0 80 80">
+                <circle class="score-ring-bg" cx="40" cy="40" r="34" />
+                <circle class="score-ring-fill" cx="40" cy="40" r="34"
+                  stroke="oklch(0.68 0.20 25)"
+                  stroke-dasharray="213.6"
+                  stroke-dashoffset="160" id="hero-ring" />
+              </svg>
+              <div class="score-ring-text">
+                <span class="score-number">26</span>
+                <span class="score-denom">/100</span>
+              </div>
+            </div>
+            <div>
+              <div class="score-label">Compliance Score</div>
+              <div class="score-status">⚠ Critical — action required</div>
+            </div>
+          </div>
+          <div class="score-bars">
+            <div class="score-bar-row">
+              <div class="score-bar-label"><span class="score-bar-name">EU AI Act</span><span class="score-bar-val">15</span></div>
+              <div class="score-bar-track"><div class="score-bar-fill" style="width:15%;background:oklch(0.68 0.20 25)"></div></div>
+            </div>
+            <div class="score-bar-row">
+              <div class="score-bar-label"><span class="score-bar-name">Data Quality</span><span class="score-bar-val">40</span></div>
+              <div class="score-bar-track"><div class="score-bar-fill" style="width:40%;background:oklch(0.78 0.18 85)"></div></div>
+            </div>
+            <div class="score-bar-row">
+              <div class="score-bar-label"><span class="score-bar-name">PII Exposure</span><span class="score-bar-val">30</span></div>
+              <div class="score-bar-track"><div class="score-bar-fill" style="width:30%;background:oklch(0.68 0.20 25)"></div></div>
+            </div>
+            <div class="score-bar-row">
+              <div class="score-bar-label"><span class="score-bar-name">Audit Trail</span><span class="score-bar-val">25</span></div>
+              <div class="score-bar-track"><div class="score-bar-fill" style="width:25%;background:oklch(0.60 0.20 290)"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DEADLINE BANNER -->
+  <section class="section" style="padding:48px 0;">
+    <div class="container">
+      <div class="deadline-banner">
+        <span class="deadline-icon">⚠️</span>
+        <div class="deadline-text">
+          <div class="deadline-title">EU AI Act high-risk compliance deadline</div>
+          <div class="deadline-sub">August 2, 2026 — regulated industries must demonstrate audit trails or face fines up to €30M or 6% global revenue</div>
+        </div>
+        <div class="countdown" id="countdown">
+          <div class="countdown-unit"><span class="countdown-val" id="cd-days">--</span><span class="countdown-label">days</span></div>
+          <div class="countdown-unit"><span class="countdown-val" id="cd-hrs">--</span><span class="countdown-label">hrs</span></div>
+          <div class="countdown-unit"><span class="countdown-val" id="cd-min">--</span><span class="countdown-label">min</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="section">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-label">How it works</div>
+        <h2 class="section-title">Two lines of code.<br>Full compliance coverage.</h2>
+        <p class="section-sub">Agent Provenance wraps your existing agent logic and automatically captures the data lineage behind every decision.</p>
+      </div>
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-num">01</div>
+          <div class="step-title">Install the SDK</div>
+          <div class="step-desc">pip install agent-provenance. Works with LangChain, CrewAI, AutoGen, and any custom agent framework.</div>
+        </div>
+        <div class="step-card">
+          <div class="step-num">02</div>
+          <div class="step-title">Wrap your agent</div>
+          <div class="step-desc">Add a ProvenanceTracer context manager around your agent call. No refactoring required.</div>
+        </div>
+        <div class="step-card">
+          <div class="step-num">03</div>
+          <div class="step-title">Declare data assets</div>
+          <div class="step-desc">Tell the SDK what data your agent used — source URI, quality score, PII flag. One line per data source.</div>
+        </div>
+        <div class="step-card">
+          <div class="step-num">04</div>
+          <div class="step-title">Generate reports</div>
+          <div class="step-desc">Export PDF compliance reports for legal teams, or query the API for real-time audit trail data.</div>
+        </div>
+      </div>
+      <div class="code-block" style="margin-top:48px;">
+        <div class="code-header">
+          <div class="dot dot-red"></div>
+          <div class="dot dot-yellow"></div>
+          <div class="dot dot-green"></div>
+          <span class="code-lang">python</span>
+        </div>
+        <div class="code-body">
+          <pre><span class="code-kw">from</span> agent_provenance <span class="code-kw">import</span> ProvenanceTracer, DataAssetRef
+
+tracer = ProvenanceTracer(api_key=<span class="code-str">"your-api-key"</span>)
+
+<span class="code-kw">with</span> tracer.trace(<span class="code-str">"loan-approval"</span>) <span class="code-kw">as</span> decision:
+    decision.add_data_asset(DataAssetRef(
+        asset_id=<span class="code-str">"credit-bureau-api"</span>,
+        source_uri=<span class="code-str">"https://api.creditbureau.com/v2"</span>,
+        quality_score=<span class="code-num">0.91</span>,
+        pii_detected=<span class="code-kw">True</span>,
+        eu_ai_act_category=<span class="code-str">"high_risk"</span>
+    ))
+    result = your_agent.run(applicant_data)
+    decision.set_output(result, model_name=<span class="code-str">"gpt-4o"</span>)
+
+<span class="code-comment"># decision.record is now a compliance-ready audit trail</span></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- OPEN SOURCE -->
+  <section class="section">
+    <div class="container">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center;">
+        <div>
+          <div class="section-label">Open source</div>
+          <h2 class="section-title">Compliance infrastructure should be a public good.</h2>
+          <p class="section-sub" style="margin-bottom:24px;">The SDK is MIT licensed. Audit trail generation, data quality scoring, and EU AI Act risk classification are all free, forever. The SaaS dashboard is where we keep the lights on.</p>
+          <a href="https://github.com/anushathirkettle-ai/agent-provenance" target="_blank" class="btn-secondary" style="display:inline-flex;">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+            Star on GitHub
+          </a>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <div class="step-card" style="border-left:3px solid var(--teal);">
+            <div style="font-size:13px;font-weight:600;color:var(--white);margin-bottom:4px;">MIT License</div>
+            <div style="font-size:13px;color:var(--white-50);">Use in production, modify, distribute — no restrictions.</div>
+          </div>
+          <div class="step-card" style="border-left:3px solid var(--amber);">
+            <div style="font-size:13px;font-weight:600;color:var(--white);margin-bottom:4px;">Framework agnostic</div>
+            <div style="font-size:13px;color:var(--white-50);">LangChain, CrewAI, AutoGen, or your own custom agent.</div>
+          </div>
+          <div class="step-card" style="border-left:3px solid var(--purple);">
+            <div style="font-size:13px;font-weight:600;color:var(--white);margin-bottom:4px;">Regulation-mapped</div>
+            <div style="font-size:13px;color:var(--white-50);">EU AI Act, GDPR Article 22, CCPA — all in one SDK.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ═══════════════════════════════════════════ AUDIT PAGE ═══════════════════════════════════════════ -->
+<div id="page-audit" class="page">
+  <div class="container-narrow" style="padding-top:80px;padding-bottom:80px;">
+    <div style="text-align:center;margin-bottom:40px;">
+      <div class="hero-badge" style="display:inline-flex;margin-bottom:16px;">
+        <span style="width:6px;height:6px;border-radius:50%;background:var(--teal);"></span>
+        Free · No signup required · Instant results
+      </div>
+      <h1 class="serif" style="font-size:clamp(28px,4vw,40px);color:var(--white);margin-bottom:12px;">Agent Compliance Auditor</h1>
+      <p style="font-size:15px;color:var(--white-50);max-width:480px;margin:0 auto;line-height:1.65;">
+        Describe your AI agent. Get a scored compliance report covering EU AI Act risk level, data quality, PII exposure, and audit trail coverage.
+      </p>
+    </div>
+
+    <div id="audit-form-section">
+      <!-- Step 1: Framework -->
+      <div class="audit-form-card">
+        <div class="form-section-title">
+          <span class="form-step-num">1</span>
+          Agent framework
+        </div>
+        <div class="chip-grid" id="framework-chips">
+          <button class="chip" onclick="selectChip('framework', this, 'LangChain')">LangChain</button>
+          <button class="chip" onclick="selectChip('framework', this, 'CrewAI')">CrewAI</button>
+          <button class="chip" onclick="selectChip('framework', this, 'AutoGen')">AutoGen</button>
+          <button class="chip" onclick="selectChip('framework', this, 'LlamaIndex')">LlamaIndex</button>
+          <button class="chip" onclick="selectChip('framework', this, 'OpenAI Assistants')">OpenAI Assistants</button>
+          <button class="chip" onclick="selectChip('framework', this, 'Custom')">Custom / Other</button>
+        </div>
+      </div>
+
+      <!-- Step 2: Use case -->
+      <div class="audit-form-card">
+        <div class="form-section-title">
+          <span class="form-step-num">2</span>
+          What does your agent do?
+        </div>
+        <div class="chip-grid" id="usecase-chips">
+          <button class="chip" onclick="selectChip('usecase', this, 'CV / resume screening')">CV / resume screening</button>
+          <button class="chip" onclick="selectChip('usecase', this, 'Loan / credit assessment')">Loan / credit assessment</button>
+          <button class="chip" onclick="selectChip('usecase', this, 'Medical diagnosis support')">Medical diagnosis support</button>
+          <button class="chip" onclick="selectChip('usecase', this, 'Legal document analysis')">Legal document analysis</button>
+          <button class="chip" onclick="selectChip('usecase', this, 'Customer service automation')">Customer service automation</button>
+          <button class="chip" onclick="selectChip('usecase', this, 'Content generation')">Content generation</button>
+          <button class="chip" onclick="selectChip('usecase', this, 'Code generation')">Code generation</button>
+          <button class="chip" onclick="selectChip('usecase', this, 'Data analysis / reporting')">Data analysis / reporting</button>
+          <button class="chip" onclick="selectChip('usecase', this, 'Fraud detection')">Fraud detection</button>
+          <button class="chip" onclick="selectChip('usecase', this, 'Other')">Other</button>
+        </div>
+      </div>
+
+      <!-- Step 3: Data sources -->
+      <div class="audit-form-card">
+        <div class="form-section-title">
+          <span class="form-step-num">3</span>
+          Data sources <span style="font-weight:400;color:var(--white-30);font-size:12px;">(optional)</span>
+        </div>
+        <textarea class="form-textarea" id="data-sources" rows="2"
+          placeholder="e.g. CRM database, credit bureau API, public web, internal knowledge base..."></textarea>
+      </div>
+
+      <!-- Step 4: Quick checks -->
+      <div class="audit-form-card">
+        <div class="form-section-title">
+          <span class="form-step-num">4</span>
+          Quick checks
+        </div>
+        <div class="toggle-row">
+          <button class="toggle" id="toggle-irreversible" onclick="toggleSwitch('irreversible')"></button>
+          <span class="toggle-label">Agent makes irreversible decisions (e.g. approves/rejects, sends communications, moves funds)</span>
+        </div>
+        <div class="toggle-row">
+          <button class="toggle" id="toggle-personal-data" onclick="toggleSwitch('personal-data')"></button>
+          <span class="toggle-label">Agent processes personal data (names, emails, financial data, health data)</span>
+        </div>
+        <div class="toggle-row">
+          <button class="toggle" id="toggle-audit-trail" onclick="toggleSwitch('audit-trail')"></button>
+          <span class="toggle-label">Agent currently has an audit trail (logs decisions with data sources)</span>
+        </div>
+      </div>
+
+      <button class="submit-btn" id="audit-submit-btn" onclick="runAudit()">
+        Run compliance audit →
+      </button>
+    </div>
+
+    <!-- RESULTS -->
+    <div id="audit-results-section" style="display:none;">
+      <div class="results-card">
+        <div class="results-header">
+          <div id="risk-badge" class="risk-badge risk-high">⚠ HIGH RISK — EU AI Act Annex III</div>
+          <div style="font-size:22px;font-weight:700;color:var(--white);margin-bottom:4px;" id="result-title">Compliance Report</div>
+          <div style="font-size:13px;color:var(--white-50);" id="result-subtitle">Generated for your agent configuration</div>
+        </div>
+        <div class="results-scores" id="results-scores"></div>
+        <div class="issues-section">
+          <div class="issues-title">Issues found</div>
+          <div id="issues-list"></div>
+        </div>
+        <div class="gate-overlay">
+          <div class="gate-blur">
+            <div class="sdk-section">
+              <div class="sdk-title">Recommended SDK configuration</div>
+              <div class="sdk-sub">Pre-configured install command for your agent framework</div>
+              <div class="sdk-code" id="sdk-code-preview">pip install agent-provenance
+# Add to your agent:
+from agent_provenance import ProvenanceTracer
+tracer = ProvenanceTracer(api_key="YOUR_KEY")</div>
+            </div>
+          </div>
+          <div class="gate-card">
+            <div class="gate-icon">🔒</div>
+            <div class="gate-title">Sign in to unlock your full report</div>
+            <div class="gate-sub">Get all issues, recommendations, and your pre-configured SDK install command</div>
+            <button class="btn-primary" onclick="showToast('Sign-in coming soon — full Manus project launching shortly!')">
+              Get full report →
+            </button>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:16px;text-align:center;">
+        <button onclick="resetAudit()" style="background:none;border:none;color:var(--white-50);font-size:14px;cursor:pointer;text-decoration:underline;">
+          Run another audit
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ PRICING PAGE ═══════════════════════════════════════════ -->
+<div id="page-pricing" class="page">
+  <div class="container" style="padding-top:80px;padding-bottom:80px;">
+    <div style="text-align:center;margin-bottom:60px;">
+      <div class="section-label">Pricing</div>
+      <h1 class="section-title">Start free. Scale when you need to.</h1>
+      <p class="section-sub" style="margin:0 auto;">The SDK is always free and open source. The dashboard is where teams collaborate on compliance at scale.</p>
+    </div>
+    <div class="pricing-grid">
+      <!-- Free -->
+      <div class="pricing-card">
+        <div class="pricing-tier">Free</div>
+        <div class="pricing-price">$0<span>/mo</span></div>
+        <div class="pricing-desc">For developers getting started with agent compliance.</div>
+        <ul class="pricing-features">
+          <li class="pricing-feature"><span class="pricing-check">✓</span> MIT open-source SDK</li>
+          <li class="pricing-feature"><span class="pricing-check">✓</span> Unlimited audit trail generation</li>
+          <li class="pricing-feature"><span class="pricing-check">✓</span> EU AI Act risk classification</li>
+          <li class="pricing-feature"><span class="pricing-check">✓</span> 3 compliance reports/month</li>
+          <li class="pricing-feature"><span class="pricing-check">✓</span> Community support</li>
+        </ul>
+        <button class="pricing-btn pricing-btn-secondary" onclick="showPage('audit')">Start free audit</button>
+      </div>
+      <!-- Pro -->
+      <div class="pricing-card featured">
+        <div class="pricing-badge">Most popular</div>
+        <div class="pricing-tier" style="color:var(--teal);">Pro</div>
+        <div class="pricing-price" style="color:var(--teal);">$49<span>/mo</span></div>
+        <div class="pricing-desc">For teams shipping AI agents to production.</div>
+        <ul class="pricing-features">
+          <li class="pricing-feature"><span class="pricing-check">✓</span> Everything in Free</li>
+          <li class="pricing-feature"><span class="pricing-check">✓</span> Unlimited compliance reports</li>
+          <li class="pricing-feature"><span class="pricing-check">✓</span> Real-time compliance dashboard</li>
+          <li class="pricing-feature"><span class="pricing-check">✓</span> PDF export for legal teams</li>
+          <li class="pricing-feature"><span class="pricing-check">✓</span> Multi-agent lineage tracking</li>
+          <li class="pricing-feature"><span class="pricing-check">✓</span> Slack & webhook alerts</li>
+          <li class="pricing-feature"><span class="pricing-check">✓</span> Priority support</li>
+        </ul>
+        <button class="pricing-btn pricing-btn-primary" onclick="showToast('Pro checkout launching soon — full platform coming shortly!')">
+          Start Pro trial →
+        </button>
+      </div>
+      <!-- Enterprise -->
+      <div class="pricing-card">
+        <div class="pricing-tier">Enterprise</div>
+        <div class="pricing-price">Custom<span></span></div>
+        <div class="pricing-desc">For regulated industries with strict compliance requirements.</div>
+        <ul class="pricing-features">
+          <li class="pricing-feature"><span class="pricing-check">✓</span> Everything in Pro</li>
+          <li class="pricing-feature"><span class="pricing-check">✓</span> On-premise deployment</li>
+          <li class="pricing-feature"><span class="pricing-check">✓</span> Custom regulation mapping</li>
+          <li class="pricing-feature"><span class="pricing-check">✓</span> Dedicated compliance engineer</li>
+          <li class="pricing-feature"><span class="pricing-check">✓</span> SLA & audit support</li>
+          <li class="pricing-feature"><span class="pricing-check">✓</span> Legal team briefings</li>
+        </ul>
+        <button class="pricing-btn pricing-btn-outline" onclick="showToast('Email hello@agentprovenance.io for enterprise pricing')">
+          Talk to us →
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ DEVELOPERS PAGE ═══════════════════════════════════════════ -->
+<div id="page-developers" class="page">
+  <div class="container" style="padding-top:80px;padding-bottom:80px;">
+    <div style="margin-bottom:48px;">
+      <div class="section-label">SDK Documentation</div>
+      <h1 class="section-title">Get started in 2 minutes.</h1>
+      <p class="section-sub">Everything you need to add compliance-ready audit trails to your AI agent.</p>
+    </div>
+    <div class="dev-tabs">
+      <button class="dev-tab active" onclick="showDevTab('install', this)">Install</button>
+      <button class="dev-tab" onclick="showDevTab('quickstart', this)">Quickstart</button>
+      <button class="dev-tab" onclick="showDevTab('langchain', this)">LangChain</button>
+      <button class="dev-tab" onclick="showDevTab('multiagent', this)">Multi-agent</button>
+      <button class="dev-tab" onclick="showDevTab('reports', this)">Reports</button>
+    </div>
+
+    <div id="dev-install" class="dev-panel active">
+      <div class="install-cmd">
+        <code>pip install agent-provenance</code>
+        <button class="copy-btn" onclick="copyText('pip install agent-provenance', this)">Copy</button>
+      </div>
+      <div class="install-cmd">
+        <code>npm install @agent-provenance/js</code>
+        <button class="copy-btn" onclick="copyText('npm install @agent-provenance/js', this)">Copy</button>
+      </div>
+      <p style="font-size:14px;color:var(--white-50);margin-top:16px;">Requires Python 3.9+ or Node.js 18+. Compatible with all major agent frameworks.</p>
+    </div>
+
+    <div id="dev-quickstart" class="dev-panel">
+      <div class="code-block">
+        <div class="code-header">
+          <div class="dot dot-red"></div><div class="dot dot-yellow"></div><div class="dot dot-green"></div>
+          <span class="code-lang">python</span>
+        </div>
+        <div class="code-body"><pre><span class="code-kw">from</span> agent_provenance <span class="code-kw">import</span> ProvenanceTracer, DataAssetRef
+
+tracer = ProvenanceTracer(api_key=<span class="code-str">"your-api-key"</span>)
+
+<span class="code-kw">with</span> tracer.trace(<span class="code-str">"loan-approval-agent"</span>) <span class="code-kw">as</span> decision:
+    decision.add_data_asset(DataAssetRef(
+        asset_id=<span class="code-str">"credit-bureau-api"</span>,
+        source_uri=<span class="code-str">"https://api.creditbureau.com/v2"</span>,
+        quality_score=<span class="code-num">0.91</span>,
+        record_count=<span class="code-num">1</span>,
+        pii_detected=<span class="code-kw">True</span>,
+        eu_ai_act_category=<span class="code-str">"high_risk"</span>
+    ))
+    result = your_agent.run(applicant_data)
+    decision.set_output(result, model_name=<span class="code-str">"gpt-4o"</span>)
+
+<span class="code-comment"># decision.record is now a compliance-ready audit trail</span></pre></div>
+      </div>
+    </div>
+
+    <div id="dev-langchain" class="dev-panel">
+      <div class="code-block">
+        <div class="code-header">
+          <div class="dot dot-red"></div><div class="dot dot-yellow"></div><div class="dot dot-green"></div>
+          <span class="code-lang">python</span>
+        </div>
+        <div class="code-body"><pre><span class="code-kw">from</span> agent_provenance.integrations.langchain <span class="code-kw">import</span> ProvenanceCallbackHandler
+<span class="code-kw">from</span> langchain.chat_models <span class="code-kw">import</span> ChatOpenAI
+<span class="code-kw">from</span> langchain.chains <span class="code-kw">import</span> LLMChain
+
+tracer = ProvenanceTracer(api_key=<span class="code-str">"your-api-key"</span>)
+handler = ProvenanceCallbackHandler(tracer=tracer)
+
+llm = ChatOpenAI(callbacks=[handler])
+chain = LLMChain(llm=llm, prompt=your_prompt)
+
+<span class="code-comment"># Every chain.run() call now generates a provenance record</span>
+result = chain.run(input_data)</pre></div>
+      </div>
+    </div>
+
+    <div id="dev-multiagent" class="dev-panel">
+      <div class="code-block">
+        <div class="code-header">
+          <div class="dot dot-red"></div><div class="dot dot-yellow"></div><div class="dot dot-green"></div>
+          <span class="code-lang">python</span>
+        </div>
+        <div class="code-body"><pre><span class="code-comment"># Track multi-agent chains with parent_decision_id</span>
+<span class="code-kw">with</span> tracer.trace(<span class="code-str">"orchestrator-agent"</span>) <span class="code-kw">as</span> parent:
+    parent.add_data_asset(DataAssetRef(
+        asset_id=<span class="code-str">"customer-db"</span>,
+        quality_score=<span class="code-num">0.88</span>
+    ))
+
+    <span class="code-comment"># Child agent inherits lineage</span>
+    <span class="code-kw">with</span> tracer.trace(<span class="code-str">"cv-screening-agent"</span>,
+                      parent_decision_id=parent.record.decision_id) <span class="code-kw">as</span> child:
+        child.add_data_asset(DataAssetRef(
+            asset_id=<span class="code-str">"cv-parser-api"</span>,
+            source_agent_id=parent.record.decision_id,
+            quality_score=<span class="code-num">0.74</span>
+        ))
+        child.set_output(screening_result)</pre></div>
+      </div>
+    </div>
+
+    <div id="dev-reports" class="dev-panel">
+      <div class="code-block">
+        <div class="code-header">
+          <div class="dot dot-red"></div><div class="dot dot-yellow"></div><div class="dot dot-green"></div>
+          <span class="code-lang">python</span>
+        </div>
+        <div class="code-body"><pre><span class="code-kw">from</span> agent_provenance <span class="code-kw">import</span> ComplianceReporter
+
+reporter = ComplianceReporter(api_key=<span class="code-str">"your-api-key"</span>)
+
+report = reporter.generate(
+    session_id=<span class="code-str">"session-abc123"</span>,
+    format=<span class="code-str">"pdf"</span>,  <span class="code-comment"># or "json"</span>
+    regulation=<span class="code-str">"eu_ai_act"</span>  <span class="code-comment"># or "gdpr", "ccpa"</span>
+)
+
+<span class="code-comment"># report.url — downloadable PDF</span>
+<span class="code-comment"># report.risk_level — HIGH / LIMITED / MINIMAL</span>
+<span class="code-comment"># report.issues — list of compliance gaps</span></pre></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ ABOUT PAGE ═══════════════════════════════════════════ -->
+<div id="page-about" class="page">
+  <div class="container" style="padding-top:80px;padding-bottom:80px;">
+    <div class="about-grid">
+      <div>
+        <div class="section-label">About</div>
+        <h1 class="section-title" style="margin-bottom:24px;">Agents make the decisions. Humans carry the accountability.</h1>
+        <p style="font-size:16px;color:var(--white-70);line-height:1.75;margin-bottom:20px;">
+          AI agents are taking over decisions that humans used to make — credit approvals, hiring screens, medical triage, financial recommendations. That shift is happening fast. What isn't keeping pace is the accountability infrastructure around it.
+        </p>
+        <p style="font-size:16px;color:var(--white-70);line-height:1.75;margin-bottom:20px;">
+          When an agent gets it wrong, a human still answers for it. A regulator, a customer, a board — someone will ask: <em>"Why did your agent make that decision, and what data was it working from?"</em> Right now, most organisations cannot answer that question.
+        </p>
+        <p style="font-size:16px;color:var(--white-70);line-height:1.75;margin-bottom:20px;">
+          Agent Provenance is the lighthouse. It gives every agent decision a traceable, auditable record — so when accountability is called for, you have the evidence to meet it. Not after a breach. Not after a fine. From the moment your agent goes live.
+        </p>
+        <div class="about-quote">
+          "The EU AI Act doesn't care that your model is accurate. It cares that you can prove, decision by decision, what data your agent used and whether it was trustworthy."
+        </div>
+        <p style="font-size:16px;color:var(--white-70);line-height:1.75;margin-bottom:20px;">
+          Agent Provenance is the tool I wish I'd had. It's open source because compliance infrastructure should be a public good — not a £50,000 consulting engagement.
+        </p>
+        <p style="font-size:16px;color:var(--white-70);line-height:1.75;">
+          I'm <strong style="color:var(--white);">Anusha Su-Thirkettle</strong>. I also run <a href="https://haatconsulting.com" target="_blank" style="color:var(--teal);text-decoration:none;">HAAT Consulting</a>, where I help companies build AI products that are worth trusting.
+        </p>
+        <div class="about-stat-grid">
+          <div class="about-stat">
+            <div class="about-stat-num">10+</div>
+            <div class="about-stat-label">Years building enterprise AI products</div>
+          </div>
+          <div class="about-stat">
+            <div class="about-stat-num">78%</div>
+            <div class="about-stat-label">Of businesses stuck in AI pilot purgatory</div>
+          </div>
+          <div class="about-stat">
+            <div class="about-stat-num">€30M</div>
+            <div class="about-stat-label">Max EU AI Act fine for non-compliance</div>
+          </div>
+          <div class="about-stat">
+            <div class="about-stat-num">102</div>
+            <div class="about-stat-label">Days until August 2 deadline</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="timeline">
+          <div class="timeline-item">
+            <div class="timeline-left">
+              <div class="timeline-dot"></div>
+              <div class="timeline-line"></div>
+            </div>
+            <div>
+              <div class="timeline-year">2020 — 2024</div>
+              <div class="timeline-title">Enterprise AI product leadership</div>
+              <div class="timeline-desc">Led AI product teams at scale. Learned that the gap between "AI pilot" and "AI in production" is almost always a data governance and auditability problem.</div>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-left">
+              <div class="timeline-dot"></div>
+              <div class="timeline-line"></div>
+            </div>
+            <div>
+              <div class="timeline-year">2025</div>
+              <div class="timeline-title">Founded HAAT Consulting</div>
+              <div class="timeline-desc">Fractional CPO and AI product strategy for companies navigating the gap between AI pilots and production. The consulting practice that funds the open-source work.</div>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-left">
+              <div class="timeline-dot"></div>
+              <div class="timeline-line"></div>
+            </div>
+            <div>
+              <div class="timeline-year">2026</div>
+              <div class="timeline-title">Agent Provenance — public launch</div>
+              <div class="timeline-desc">MIT-licensed SDK. Free audit tool. Because the EU AI Act deadline is real and most teams are not ready.</div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:40px;padding:24px;background:var(--bg-card);border:1px solid var(--white-10);border-radius:12px;">
+          <div style="font-size:13px;font-weight:600;color:var(--white);margin-bottom:12px;">Get in touch</div>
+          <p style="font-size:13px;color:var(--white-50);margin-bottom:16px;line-height:1.6;">Whether you want a free agent audit, a HAAT consulting engagement, or just to talk about the EU AI Act — I'm genuinely happy to hear from you.</p>
+          <a href="mailto:hello@agentprovenance.io" class="btn-primary" style="display:inline-flex;font-size:14px;">
+            hello@agentprovenance.io →
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="nav-brand" style="margin-bottom:12px;cursor:pointer;" onclick="showPage('home')">
+          <div class="nav-logo">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <circle cx="5" cy="5" r="3" fill="oklch(0.72 0.18 185)" />
+              <circle cx="11" cy="5" r="3" fill="oklch(0.72 0.18 185)" fill-opacity="0.5" />
+              <circle cx="5" cy="11" r="3" fill="oklch(0.72 0.18 185)" fill-opacity="0.5" />
+              <circle cx="11" cy="11" r="3" fill="oklch(0.72 0.18 185)" />
+            </svg>
+          </div>
+          <span class="nav-brand-text">agent-provenance</span>
+        </div>
+        <p class="footer-brand-desc">Compliance-ready audit trails for AI agent decisions. Know why your agent decided — and whether the data behind it was trustworthy.</p>
+        <div style="margin-top:16px;"><span class="footer-mit">MIT License</span></div>
+      </div>
+      <div>
+        <div class="footer-col-title">Product</div>
+        <div class="footer-links">
+          <button class="footer-link" onclick="showPage('audit')">Free Audit</button>
+          <button class="footer-link" onclick="showPage('pricing')">Pricing</button>
+          <button class="footer-link" onclick="showPage('developers')">SDK Docs</button>
+          <button class="footer-link" onclick="showPage('about')">About</button>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Developers</div>
+        <div class="footer-links">
+          <a class="footer-link" href="https://github.com/anushathirkettle-ai/agent-provenance" target="_blank">GitHub</a>
+          <button class="footer-link" onclick="showPage('developers')">LangChain</button>
+          <button class="footer-link" onclick="showPage('developers')">CrewAI</button>
+          <button class="footer-link" onclick="showPage('developers')">API Reference</button>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Compliance</div>
+        <div class="footer-links">
+          <button class="footer-link" onclick="showPage('developers')">EU AI Act Guide</button>
+          <button class="footer-link" onclick="showPage('developers')">GDPR & PII</button>
+          <button class="footer-link" onclick="showPage('developers')">Audit Trail Spec</button>
+          <button class="footer-link" onclick="showPage('developers')">Risk Classification</button>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Company</div>
+        <div class="footer-links">
+          <button class="footer-link" onclick="showPage('about')">About</button>
+          <a class="footer-link" href="https://haatconsulting.com" target="_blank">HAAT Consulting</a>
+          <a class="footer-link" href="mailto:hello@agentprovenance.io">Contact</a>
+          <a class="footer-link" href="https://github.com/anushathirkettle-ai/agent-provenance" target="_blank">GitHub</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span class="footer-copy">© 2026 Agent Provenance. MIT Licensed.</span>
+      <span class="footer-copy">Built by <a href="https://anushasu.com" target="_blank" style="color:var(--teal);text-decoration:none;">Anusha Su-Thirkettle</a></span>
+    </div>
+  </div>
+</footer>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+  // ─── STATE ───────────────────────────────────────────────────────────────────
+  const auditState = {
+    framework: null,
+    usecase: null,
+    irreversible: false,
+    personalData: false,
+    auditTrail: false,
+  };
+
+  // ─── NAVIGATION ──────────────────────────────────────────────────────────────
+  function showPage(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + id).classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    // Update nav active state
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+  }
+
+  // ─── COUNTDOWN ───────────────────────────────────────────────────────────────
+  function updateCountdown() {
+    const deadline = new Date('2026-08-02T00:00:00Z').getTime();
+    const diff = deadline - Date.now();
+    if (diff <= 0) return;
+    const days = Math.floor(diff / 86400000);
+    const hrs = Math.floor((diff % 86400000) / 3600000);
+    const min = Math.floor((diff % 3600000) / 60000);
+    document.getElementById('cd-days').textContent = String(days).padStart(2, '0');
+    document.getElementById('cd-hrs').textContent = String(hrs).padStart(2, '0');
+    document.getElementById('cd-min').textContent = String(min).padStart(2, '0');
+  }
+  updateCountdown();
+  setInterval(updateCountdown, 60000);
+
+  // ─── CHIP SELECTION ──────────────────────────────────────────────────────────
+  function selectChip(type, el, value) {
+    const group = type === 'framework' ? 'framework-chips' : 'usecase-chips';
+    document.querySelectorAll('#' + group + ' .chip').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    if (type === 'framework') auditState.framework = value;
+    else auditState.usecase = value;
+  }
+
+  // ─── TOGGLE ──────────────────────────────────────────────────────────────────
+  function toggleSwitch(id) {
+    const el = document.getElementById('toggle-' + id);
+    el.classList.toggle('on');
+    if (id === 'irreversible') auditState.irreversible = el.classList.contains('on');
+    if (id === 'personal-data') auditState.personalData = el.classList.contains('on');
+    if (id === 'audit-trail') auditState.auditTrail = el.classList.contains('on');
+  }
+
+  // ─── SCORING LOGIC (ported from server/auditRouter.ts) ───────────────────────
+  const HIGH_RISK_USE_CASES = [
+    'CV / resume screening', 'Loan / credit assessment',
+    'Medical diagnosis support', 'Legal document analysis', 'Fraud detection'
+  ];
+
+  function scoreEuAiAct(useCase, irreversible, personalData) {
+    let score = 100;
+    if (HIGH_RISK_USE_CASES.includes(useCase)) score -= 50;
+    if (irreversible) score -= 20;
+    if (personalData) score -= 15;
+    return Math.max(0, score);
+  }
+
+  function scoreDataQuality(dataSources) {
+    if (!dataSources || dataSources.trim() === '') return 50;
+    const src = dataSources.toLowerCase();
+    let score = 60;
+    if (src.includes('public web') || src.includes('web scraping')) score -= 25;
+    if (src.includes('crm') || src.includes('database') || src.includes('api')) score += 15;
+    if (src.includes('verified') || src.includes('certified')) score += 10;
+    if (src.includes('unstructured') || src.includes('pdf') || src.includes('email')) score -= 10;
+    return Math.max(0, Math.min(100, score));
+  }
+
+  function scorePiiExposure(personalData, useCase) {
+    if (!personalData) return 80;
+    let score = 50;
+    if (HIGH_RISK_USE_CASES.includes(useCase)) score -= 25;
+    return Math.max(0, score);
+  }
+
+  function scoreAuditTrail(hasAuditTrail, agentType) {
+    if (hasAuditTrail) return 75;
+    let score = 20;
+    if (agentType === 'LangChain') score += 5;
+    return score;
+  }
+
+  function getRiskLevel(euScore, useCase) {
+    if (HIGH_RISK_USE_CASES.includes(useCase) || euScore < 30) return 'HIGH';
+    if (euScore < 60) return 'LIMITED';
+    return 'MINIMAL';
+  }
+
+  function buildIssues(euScore, dqScore, piiScore, atScore, useCase, irreversible, personalData, hasAuditTrail) {
+    const issues = [];
+    if (HIGH_RISK_USE_CASES.includes(useCase)) {
+      issues.push(`EU AI Act: "${useCase}" is classified as high-risk under Annex III. Full audit trail and human oversight required by August 2, 2026.`);
+    }
+    if (!hasAuditTrail) {
+      issues.push('No audit trail detected. EU AI Act Article 12 requires technical documentation and logging for high-risk AI systems.');
+    }
+    if (dqScore < 60) {
+      issues.push('Data quality risk: unverified or public web data sources increase hallucination risk and weaken compliance evidence.');
+    }
+    if (personalData && piiScore < 50) {
+      issues.push('PII exposure: agent processes personal data in a high-risk context. GDPR Article 22 and EU AI Act Article 10 apply.');
+    }
+    if (irreversible && !hasAuditTrail) {
+      issues.push('Irreversible decisions without audit trail: if an agent decision cannot be undone, every decision must be logged with data provenance.');
+    }
+    return issues;
+  }
+
+  // ─── RUN AUDIT ───────────────────────────────────────────────────────────────
+  function runAudit() {
+    if (!auditState.framework || !auditState.usecase) {
+      showToast('Please select an agent framework and use case first');
+      return;
+    }
+    const btn = document.getElementById('audit-submit-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Analysing...';
+
+    const dataSources = document.getElementById('data-sources').value;
+
+    setTimeout(() => {
+      const euScore = scoreEuAiAct(auditState.usecase, auditState.irreversible, auditState.personalData);
+      const dqScore = scoreDataQuality(dataSources);
+      const piiScore = scorePiiExposure(auditState.personalData, auditState.usecase);
+      const atScore = scoreAuditTrail(auditState.auditTrail, auditState.framework);
+      const overall = Math.round((euScore * 0.35) + (dqScore * 0.25) + (piiScore * 0.20) + (atScore * 0.20));
+      const riskLevel = getRiskLevel(euScore, auditState.usecase);
+      const issues = buildIssues(euScore, dqScore, piiScore, atScore, auditState.usecase,
+        auditState.irreversible, auditState.personalData, auditState.auditTrail);
+
+      renderResults({ euScore, dqScore, piiScore, atScore, overall, riskLevel, issues });
+
+      document.getElementById('audit-form-section').style.display = 'none';
+      document.getElementById('audit-results-section').style.display = 'block';
+      btn.disabled = false;
+      btn.innerHTML = 'Run compliance audit →';
+    }, 1800);
+  }
+
+  function renderResults({ euScore, dqScore, piiScore, atScore, overall, riskLevel, issues }) {
+    // Risk badge
+    const badge = document.getElementById('risk-badge');
+    badge.className = 'risk-badge';
+    if (riskLevel === 'HIGH') { badge.classList.add('risk-high'); badge.textContent = '⚠ HIGH RISK — EU AI Act Annex III'; }
+    else if (riskLevel === 'LIMITED') { badge.classList.add('risk-limited'); badge.textContent = '◆ LIMITED RISK'; }
+    else { badge.classList.add('risk-minimal'); badge.textContent = '✓ MINIMAL RISK'; }
+
+    document.getElementById('result-title').textContent = `Compliance Report — ${auditState.usecase}`;
+    document.getElementById('result-subtitle').textContent = `${auditState.framework} agent · Overall score: ${overall}/100`;
+
+    // Score tiles
+    const tiles = [
+      { label: 'EU AI Act', val: euScore, color: euScore < 40 ? 'var(--red)' : euScore < 70 ? 'var(--amber)' : 'var(--teal)' },
+      { label: 'Data Quality', val: dqScore, color: dqScore < 40 ? 'var(--red)' : dqScore < 70 ? 'var(--amber)' : 'var(--teal)' },
+      { label: 'PII Exposure', val: piiScore, color: piiScore < 40 ? 'var(--red)' : piiScore < 70 ? 'var(--amber)' : 'var(--teal)' },
+      { label: 'Audit Trail', val: atScore, color: atScore < 40 ? 'var(--red)' : atScore < 70 ? 'var(--amber)' : 'var(--teal)' },
+      { label: 'Overall', val: overall, color: overall < 40 ? 'var(--red)' : overall < 70 ? 'var(--amber)' : 'var(--teal)' },
+    ];
+    document.getElementById('results-scores').innerHTML = tiles.map(t => `
+      <div class="score-tile">
+        <div class="score-tile-label">${t.label}</div>
+        <div class="score-tile-val" style="color:${t.color}">${t.val}</div>
+        <div class="score-tile-bar"><div class="score-tile-bar-fill" style="width:${t.val}%;background:${t.color}"></div></div>
+      </div>
+    `).join('');
+
+    // Issues
+    const shown = issues.slice(0, 2);
+    document.getElementById('issues-list').innerHTML = shown.map(i => `
+      <div class="issue-item">
+        <span class="issue-icon">⚠</span>
+        <span>${i}</span>
+      </div>
+    `).join('');
+  }
+
+  function resetAudit() {
+    document.getElementById('audit-form-section').style.display = 'block';
+    document.getElementById('audit-results-section').style.display = 'none';
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+    document.querySelectorAll('.toggle').forEach(t => t.classList.remove('on'));
+    document.getElementById('data-sources').value = '';
+    auditState.framework = null; auditState.usecase = null;
+    auditState.irreversible = false; auditState.personalData = false; auditState.auditTrail = false;
+  }
+
+  // ─── DEVELOPERS TABS ─────────────────────────────────────────────────────────
+  function showDevTab(id, btn) {
+    document.querySelectorAll('.dev-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.dev-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('dev-' + id).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  // ─── COPY ────────────────────────────────────────────────────────────────────
+  function copyText(text, btn) {
+    navigator.clipboard.writeText(text).then(() => {
+      const orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = orig, 1500);
+    });
+  }
+
+  // ─── TOAST ───────────────────────────────────────────────────────────────────
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3500);
+  }
+</script>
+</body>
+</html>

@@ -37,6 +37,7 @@ function Router() {
       <Nav />
       <Switch>
         <Route path="/" component={Home} />
+        <Route path="/about" component={About} />
         <Route path="/audit" component={AuditTool} />
         <Route path="/pricing" component={Pricing} />
         <Route path="/developers" component={Developers} />

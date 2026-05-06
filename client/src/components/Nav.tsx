@@ -7,6 +7,7 @@ const navLinks = [
   { label: "Free Audit", href: "/audit" },
   { label: "Developers", href: "/developers" },
   { label: "Pricing", href: "/pricing" },
+  { label: "About", href: "/about" },
 ];
 
 const BANNER_KEY = "agentprovenance_banner_dismissed_v1";

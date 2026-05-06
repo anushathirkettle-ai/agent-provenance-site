@@ -25,7 +25,7 @@ const footerLinks = {
     { label: "Risk Classification", href: "/developers" },
   ],
   Company: [
-    { label: "About", href: "/" },
+    { label: "About", href: "/about" },
     { label: "Blog", href: "/" },
     { label: "Contact", href: "mailto:hello@agentprovenance.io" },
     { label: "GitHub", href: "https://github.com/anushathirkettle-ai/agent-provenance" },
